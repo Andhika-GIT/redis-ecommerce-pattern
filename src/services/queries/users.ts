@@ -12,9 +12,21 @@ const serialize = (user : CreateUserAttrs) => {
     }
 }
 
+const deserialize = (id : string, user : { [key:string] : string }) => {
+    return {
+        id : id,
+        username : user.username,
+        password : user.password
+    }
+}
+
 export const getUserByUsername = async (username: string) => {};
 
-export const getUserById = async (id: string) => {};
+export const getUserById = async (id: string) => {
+    const user = client.HGETALL(usersKey(id))
+
+    return deserialize(id, user)
+};
 
 export const createUser = async (attrs: CreateUserAttrs) => {
     const id = genId()
