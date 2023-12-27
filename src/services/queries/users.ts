@@ -23,7 +23,7 @@ const deserialize = (id : string, user : { [key:string] : string }) => {
 export const getUserByUsername = async (username: string) => {};
 
 export const getUserById = async (id: string) => {
-    const user = client.HGETALL(usersKey(id))
+    const user = await client.HGETALL(usersKey(id))
 
     return deserialize(id, user)
 };
