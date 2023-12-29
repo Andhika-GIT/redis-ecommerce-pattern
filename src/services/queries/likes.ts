@@ -1,6 +1,7 @@
 import { client } from "$services/redis";
 
 import { itemKey, userLikesKey } from "$services/keys";
+import { getItems } from "./items";
 
 export const userLikesItem = async (itemId: string, userId: string) => {
     const alreadyLikePost = await client.SISMEMBER(
@@ -14,7 +15,12 @@ export const userLikesItem = async (itemId: string, userId: string) => {
 }
 
 export const likedItems = async (userId: string) => {
-   
+   const itemIds = await client.SMEMBERS(userLikesKey(userId))
+
+
+   const likedItems = await getItems(itemIds)
+
+   return likedItems
 };
 
 export const likeItem = async (itemId: string, userId: string) => {
@@ -39,4 +45,10 @@ export const unlikeItem = async (itemId: string, userId: string) => {
     }
 };
 
-export const commonLikedItems = async (userOneId: string, userTwoId: string) => {};
+export const commonLikedItems = async (userOneId: string, userTwoId: string) => {
+    const ids = await client.SINTER([userLikesKey(userOneId), userLikesKey(userTwoId)])
+
+    const likedItems = await getItems(ids)
+
+    return likedItems
+};
