@@ -1,7 +1,7 @@
 import type { CreateUserAttrs } from '$services/types';
 import { genId } from '$services/utils';
 import { client } from '$services/redis';
-import { usersKey, usernameUniquekey } from '$services/keys';
+import { usersKey, usernameUniquekey, usernamesKey } from '$services/keys';
 import type { Attribute } from 'svelte/types/compiler/interfaces';
 
 
@@ -43,11 +43,20 @@ export const createUser = async (attrs: CreateUserAttrs) => {
     }
 
 
-    // otherwise, add the username into our sets data
+    // otherwise, add the username into our sets 
     await client.SADD(usernameUniquekey(), attrs.username)
 
 
-    // continue
+    // store the user username and id into sorted set (for login purpose)
+    await client.ZADD(
+        usernamesKey(), {
+        value: attrs.username,
+        // because sorted set only takes number, convert the id (hexa) to int (decimal)
+        score: parseInt(id, 16)
+       }
+    )
+
+    // store the username and password into hash
     await client.HSET(
         usersKey(id),
         serialize(attrs)
