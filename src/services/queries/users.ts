@@ -20,7 +20,26 @@ const deserialize = (id : string, user : { [key:string] : string }) => {
     }
 }
 
-export const getUserByUsername = async (username: string) => {};
+export const getUserByUsername = async (username: string) => {
+    const rawId = await client.ZSCORE(
+        usernamesKey(),
+        username
+    )
+
+    if (!rawId) {
+        throw new Error("username not existed")
+    }
+
+    const id = rawId.toString(16) 
+
+    const user = await client.HGETALL(usersKey(id))
+
+    if (Object.keys(user).length === 0) {
+        return null
+    }
+
+    return deserialize(id, user)
+};
 
 export const getUserById = async (id: string) => {
     const user = await client.HGETALL(usersKey(id))
