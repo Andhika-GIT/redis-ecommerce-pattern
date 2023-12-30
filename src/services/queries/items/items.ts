@@ -2,7 +2,7 @@ import type { CreateItemAttrs } from '$services/types';
 import { client } from '$services/redis';
 import { serialize } from './serialize';
 import { genId } from '$services/utils';
-import { itemKey } from '$services/keys';
+import { itemKey, itemByViewsKey } from '$services/keys';
 import { deserialize } from './deserialize';
 
 export const getItem = async (id: string) => {
@@ -36,7 +36,26 @@ export const getItems = async (ids: string[]) => {
 
 export const createItem = async (attrs: CreateItemAttrs, userId: string) => {
 	const id = genId();
-	await client.HSET(itemKey(id), serialize(attrs));
+
+	// PIPELINE to run all query in single request
+	await Promise.all([
+
+		// create new keys and score using sorted sets ( to display most view item in dashboard )
+		client.ZADD(
+			itemByViewsKey(),
+			{
+				// insert the item id as member, and views total as score 
+				// the default views will 0, because it's a new item
+				value: id,
+				score: 0,
+				
+			}
+		),
+
+
+		// create new item with id and it's property using hash
+		client.HSET(itemKey(id), serialize(attrs))
+	])
 
 	return id;
 };
