@@ -1,8 +1,8 @@
 import type { CreateItemAttrs } from '$services/types';
 import { client } from '$services/redis';
-import { serialize } from './serialize';
 import { genId } from '$services/utils';
-import { itemKey, itemByViewsKey } from '$services/keys';
+import { itemKey, itemByViewsKey, itemByEndingAtKey } from '$services/keys';
+import { serialize } from './serialize';
 import { deserialize } from './deserialize';
 
 export const getItem = async (id: string) => {
@@ -40,7 +40,7 @@ export const createItem = async (attrs: CreateItemAttrs, userId: string) => {
 	// PIPELINE to run all query in single request
 	await Promise.all([
 
-		// create new keys and score using sorted sets ( to display most view item in dashboard )
+		// sorted set keys and value for most views ( to display most view item in dashboard )
 		client.ZADD(
 			itemByViewsKey(),
 			{
@@ -49,6 +49,17 @@ export const createItem = async (attrs: CreateItemAttrs, userId: string) => {
 				value: id,
 				score: 0,
 				
+			}
+		),
+
+		// sorted set keys and value for ending at ( to display selling item that ending soon in dashboard)
+		client.ZADD(
+			itemByEndingAtKey(),
+			{
+				// insert the item id as member, and score as ending time 
+				// the ending time will unix timestamp in milisecond
+				value:id,
+				score: attrs.endingAt.toMillis()
 			}
 		),
 

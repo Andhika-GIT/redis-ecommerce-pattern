@@ -10,3 +10,4 @@ export const usernamesKey = () => 'usernames'
 // items
 export const itemKey = (itemId: string) => `item#${itemId}`;
 export const itemByViewsKey = () => 'items:views'
+export const itemByEndingAtKey = () => 'items:endingAt'
