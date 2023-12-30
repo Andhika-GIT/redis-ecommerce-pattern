@@ -21,17 +21,22 @@ const deserialize = (id : string, user : { [key:string] : string }) => {
 }
 
 export const getUserByUsername = async (username: string) => {
+    // find the score (user id) based on username using sorted sets
     const rawId = await client.ZSCORE(
         usernamesKey(),
         username
     )
 
+    // if id didn't exist, means the user input is wrong
     if (!rawId) {
         throw new Error("username not existed")
     }
 
+    // convert the id (decimal) to hexadecimal
+    // because we're storing hexadecimal as keys for user hash
     const id = rawId.toString(16) 
 
+    // get the user data based on hash based on the id
     const user = await client.HGETALL(usersKey(id))
 
     if (Object.keys(user).length === 0) {
