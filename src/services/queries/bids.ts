@@ -26,5 +26,10 @@ export const createBid = async (attrs: CreateBidAttrs) => {
 };
 
 export const getBidHistory = async (itemId: string, offset = 0, count = 10): Promise<Bid[]> => {
-	return [];
+	const startIndex = -1 * offset - count;
+	const endIndex = -1 - offset;
+
+	const range = await client.LRANGE(itemBidHistoryKey(itemId), startIndex, endIndex);
+
+	return range.map((bid) => deserializeHistory(bid));
 };
