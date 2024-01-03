@@ -18,6 +18,14 @@ const deserializeHistory = (stored: string) => {
 };
 
 export const createBid = async (attrs: CreateBidAttrs) => {
+	// create isolated connection for this particular action
+	return client.executeIsolated(async (isolatedClient) => {
+
+
+	// watch for this spesific key item
+	await isolatedClient.WATCH(itemKey(attrs.itemId))
+	//  if it change, cancel all action and the transaction below (to avoid double same value)
+		
 	// validation 1 : check if item exist
 	const item = await getItem(attrs.itemId)
 
@@ -40,20 +48,25 @@ export const createBid = async (attrs: CreateBidAttrs) => {
 	// create new list
 	const convertedDate = attrs.createdAt.toMillis();
 
-	return  Promise.all([
-		client.RPUSH(
+
+	// run transaction below, if the pointed item in isolatedClient.WATCH doesn't change
+	return isolatedClient
+	.multi() // begin transaction
+	// create new list for spesific item
+	.RPUSH(
 			itemBidHistoryKey(attrs.itemId),
 			serializeHistory(attrs.amount, convertedDate)
-		),
-		client.HSET(
+		)
+	// update the item in the hash based on the spesific key id
+	.HSET(
 			itemKey(item.id), {
 				bids: item.bids + 1,
 				price: attrs.amount,
 				highestBidUserId: attrs.userId
 			}
 		)
-	])
-	
+
+	})
 };
 
 export const getBidHistory = async (itemId: string, offset = 0, count = 10): Promise<Bid[]> => {
