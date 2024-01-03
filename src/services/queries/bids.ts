@@ -1,5 +1,5 @@
 import type { CreateBidAttrs, Bid } from '$services/types';
-import { itemBidHistoryKey, itemKey } from '$services/keys';
+import { itemBidHistoryKey, itemByPriceKey, itemKey } from '$services/keys';
 import { client } from '$services/redis';
 import { DateTime } from 'luxon';
 import { getItem } from './items';
@@ -65,8 +65,19 @@ export const createBid = async (attrs: CreateBidAttrs) => {
 				highestBidUserId: attrs.userId
 			}
 		)
+	.ZADD(
+		itemByPriceKey(),
+		{
+			value: item.id,
+			score: attrs.amount
+		}
+	)
 
 	})
+	// update the bid score for sorted set based on spesific id member
+	
+		
+	
 };
 
 export const getBidHistory = async (itemId: string, offset = 0, count = 10): Promise<Bid[]> => {

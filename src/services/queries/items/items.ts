@@ -1,7 +1,7 @@
 import type { CreateItemAttrs } from '$services/types';
 import { client } from '$services/redis';
 import { genId } from '$services/utils';
-import { itemKey, itemByViewsKey, itemByEndingAtKey } from '$services/keys';
+import { itemKey, itemByViewsKey, itemByEndingAtKey, itemByPriceKey } from '$services/keys';
 import { serialize } from './serialize';
 import { deserialize } from './deserialize';
 
@@ -60,6 +60,15 @@ export const createItem = async (attrs: CreateItemAttrs, userId: string) => {
 				// the ending time will unix timestamp in milisecond
 				value:id,
 				score: attrs.endingAt.toMillis()
+			}
+		),
+
+		// sorted set keys and value for price ( to sort item by price in dashboard)
+		client.ZADD(
+			itemByPriceKey(),
+			{
+				value:id,
+				score: 0
 			}
 		),
 
