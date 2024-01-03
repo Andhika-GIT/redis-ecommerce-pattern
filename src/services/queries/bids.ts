@@ -1,7 +1,8 @@
 import type { CreateBidAttrs, Bid } from '$services/types';
-import { itemBidHistoryKey } from '$services/keys';
+import { itemBidHistoryKey, itemKey } from '$services/keys';
 import { client } from '$services/redis';
 import { DateTime } from 'luxon';
+import { getItem } from './items';
 
 const serializeHistory = (amount: number, createdAt: number) => {
 	return `${amount}:${createdAt}`;
@@ -17,12 +18,42 @@ const deserializeHistory = (stored: string) => {
 };
 
 export const createBid = async (attrs: CreateBidAttrs) => {
+	// validation 1 : check if item exist
+	const item = await getItem(attrs.itemId)
+
+	if (!item) {
+		throw new Error("item doesn't exist")
+	}
+	// validation 2 : check if item expired 
+	if (item.endingAt.diff(DateTime.now()).toMillis() < 0) {
+		throw new Error("item closed to binding")
+	}
+
+
+	// validation 3 : check if user input bid amount is greater than current amount
+	if (item.price >= attrs.amount){
+		throw new Error("bid is too low")
+	}
+
+
+
+	// create new list
 	const convertedDate = attrs.createdAt.toMillis();
 
-	await client.RPUSH(
-		itemBidHistoryKey(attrs.itemId),
-		serializeHistory(attrs.amount, convertedDate)
-	);
+	return  Promise.all([
+		client.RPUSH(
+			itemBidHistoryKey(attrs.itemId),
+			serializeHistory(attrs.amount, convertedDate)
+		),
+		client.HSET(
+			itemKey(item.id), {
+				bids: item.bids + 1,
+				price: attrs.amount,
+				highestBidUserId: attrs.userId
+			}
+		)
+	])
+	
 };
 
 export const getBidHistory = async (itemId: string, offset = 0, count = 10): Promise<Bid[]> => {
