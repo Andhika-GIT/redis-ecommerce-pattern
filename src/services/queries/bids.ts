@@ -55,13 +55,12 @@ export const createBid = async (attrs: CreateBidAttrs) => {
 		]);
 	});
 
-	// create isolated connection for this particular action
-	return client.executeIsolated(async (isolatedClient) => {
-		// watch for this spesific key item
-		await isolatedClient.WATCH(itemKey(attrs.itemId));
-		//  if it change, cancel all action and the transaction below (to avoid double same value)
-	});
-	// update the bid score for sorted set based on spesific id member
+	// // create isolated connection for this particular action
+	// return client.executeIsolated(async (isolatedClient) => {
+	// 	// watch for this spesific key item
+	// 	await isolatedClient.WATCH(itemKey(attrs.itemId));
+	// 	//  if it change, cancel all action and the transaction below (to avoid double same value)
+	// });
 };
 
 export const getBidHistory = async (itemId: string, offset = 0, count = 10): Promise<Bid[]> => {
