@@ -1,6 +1,6 @@
 import type { CreateBidAttrs, Bid } from '$services/types';
 import { itemBidHistoryKey, itemByPriceKey, itemKey } from '$services/keys';
-import { client } from '$services/redis';
+import { client, withLock } from '$services/redis';
 import { DateTime } from 'luxon';
 import { getItem } from './items';
 
@@ -18,12 +18,8 @@ const deserializeHistory = (stored: string) => {
 };
 
 export const createBid = async (attrs: CreateBidAttrs) => {
-	// create isolated connection for this particular action
-	return client.executeIsolated(async (isolatedClient) => {
-		// watch for this spesific key item
-		await isolatedClient.WATCH(itemKey(attrs.itemId));
-		//  if it change, cancel all action and the transaction below (to avoid double same value)
-
+	// implement withLock to avoid race condition
+	return withLock(attrs.itemId, async () => {
 		// validation 1 : check if item exist
 		const item = await getItem(attrs.itemId);
 
@@ -43,24 +39,27 @@ export const createBid = async (attrs: CreateBidAttrs) => {
 		// create new list
 		const convertedDate = attrs.createdAt.toMillis();
 
-		// run transaction below, if the pointed item in isolatedClient.WATCH doesn't change
-		return (
-			isolatedClient
-				.multi() // begin transaction
-				// create new list for spesific item
-				.RPUSH(itemBidHistoryKey(attrs.itemId), serializeHistory(attrs.amount, convertedDate))
-				// update the item in the hash based on the spesific key id
-				.HSET(itemKey(item.id), {
-					bids: item.bids + 1,
-					price: attrs.amount,
-					highestBidUserId: attrs.userId
-				})
-				.ZADD(itemByPriceKey(), {
-					value: item.id,
-					score: attrs.amount
-				})
-				.EXEC()
-		);
+		return Promise.all([
+			// create new list for spesific item
+			client.RPUSH(itemBidHistoryKey(attrs.itemId), serializeHistory(attrs.amount, convertedDate)),
+			// update the item in the hash based on the spesific key id
+			client.HSET(itemKey(item.id), {
+				bids: item.bids + 1,
+				price: attrs.amount,
+				highestBidUserId: attrs.userId
+			}),
+			client.ZADD(itemByPriceKey(), {
+				value: item.id,
+				score: attrs.amount
+			})
+		]);
+	});
+
+	// create isolated connection for this particular action
+	return client.executeIsolated(async (isolatedClient) => {
+		// watch for this spesific key item
+		await isolatedClient.WATCH(itemKey(attrs.itemId));
+		//  if it change, cancel all action and the transaction below (to avoid double same value)
 	});
 	// update the bid score for sorted set based on spesific id member
 };
