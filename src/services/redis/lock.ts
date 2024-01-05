@@ -42,7 +42,7 @@ export const withLock = async (key: string, cb: () => any) => {
 		} finally {
 			// finally block, whenever the function goes right or wrong, keep unset the key
 			// unset or delete the lock key
-			await client.DEL(lockKey);
+			await client.unlock(lockKey, token);
 		}
 	}
 };
