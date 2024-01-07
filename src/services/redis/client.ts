@@ -1,4 +1,5 @@
 import { createClient, defineScript } from 'redis';
+import { createIndexes } from './create-indexes';
 
 const client = createClient({
 	socket: {
@@ -26,5 +27,16 @@ const client = createClient({
 
 client.on('error', (err) => console.error(err));
 client.connect();
+
+// after connected to redis client, run create index function ( for search functionality )
+client.on('connect', async () => {
+	try {
+		await createIndexes()
+	}
+	catch(err) {
+		console.error(err)
+	}
+
+})
 
 export { client };
