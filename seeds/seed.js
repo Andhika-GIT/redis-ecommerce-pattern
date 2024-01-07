@@ -8,15 +8,15 @@ import {
 	usernamesKey,
 	usersItemsKey,
 	usersBidsKey,
-	usersLikesKey,
-	itemsKey,
-	bidHistoryKey,
-	itemsByBidsKey,
-	itemsByViewsKey,
-	itemsByPriceKey,
-	itemsByEndingAtKey,
-	itemsViewsKey,
-	usernamesUniqueKey
+	userLikesKey,
+	itemKey,
+	itemBidHistoryKey,
+	itemByBidsKey,
+	itemByViewsKey,
+	itemByPriceKey,
+	itemByEndingAtKey,
+	itemViewsKey,
+	usernameUniquekey
 } from './seed-keys.js';
 
 const client = createClient({
@@ -54,29 +54,29 @@ const run = async () => {
 
 		return [
 			..._item.likes.map((userId) => {
-				return client.sAdd(usersLikesKey(userId), _item.id);
+				return client.sAdd(userLikesKey(userId), _item.id);
 			}),
 			..._item.views.map((userId) => {
-				return client.pfAdd(itemsViewsKey(_item.id), userId);
+				return client.pfAdd(itemViewsKey(_item.id), userId);
 			}),
-			client.hSet(itemsKey(item.id), item),
+			client.hSet(itemKey(item.id), item),
 			client.zAdd(usersItemsKey(item.ownerId), {
 				value: item.id,
 				score: endingAt
 			}),
-			client.zAdd(itemsByBidsKey(), {
+			client.zAdd(itemByBidsKey(), {
 				value: item.id,
 				score: item.bids
 			}),
-			client.zAdd(itemsByViewsKey(), {
+			client.zAdd(itemByViewsKey(), {
 				value: item.id,
 				score: item.views
 			}),
-			client.zAdd(itemsByPriceKey(), {
+			client.zAdd(itemByPriceKey(), {
 				value: item.id,
 				score: item.price
 			}),
-			client.zAdd(itemsByEndingAtKey(), {
+			client.zAdd(itemByEndingAtKey(), {
 				value: item.id,
 				score: item.endingAt
 			})
@@ -85,7 +85,7 @@ const run = async () => {
 
 	const userPromises = _.flatMap(content.users, (user) => {
 		return [
-			client.sAdd(usernamesUniqueKey(), {
+			client.sAdd(usernameUniquekey(), {
 				value: user.username
 			}),
 			client.zAdd(usernamesKey(), {
@@ -102,9 +102,9 @@ const run = async () => {
 	const bidPromises = _.flatMap(content.bids, (bid) => {
 		return [
 			client.sAdd(usersBidsKey(bid.userId), bid.itemId),
-			client.rPush(bidHistoryKey(bid.itemId), serializeHistory(bid.amount, bid.time)),
-			client.zIncrBy(itemsByBidsKey(), 1, bid.itemId),
-			client.zAdd(itemsByPriceKey(), { score: bid.amount, value: bid.itemId })
+			client.rPush(itemBidHistoryKey(bid.itemId), serializeHistory(bid.amount, bid.time)),
+			client.zIncrBy(itemByBidsKey(), 1, bid.itemId),
+			client.zAdd(itemByPriceKey(), { score: bid.amount, value: bid.itemId })
 		];
 	});
 
